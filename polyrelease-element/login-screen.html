@@ -1,0 +1,49 @@
+<dom-module id="login-screen">
+  <template>
+    <style>
+      :host {
+        @apply(--layout);
+        @apply(--layout-center-center);
+        @apply(--layout-fit);
+      }
+
+      paper-button {
+        color: var(--paper-grey-800);
+        background-color: #fff;
+        font-size: 20px;
+      }
+    </style>
+    <firebase-auth
+      id="auth"
+      location="https://polyrelease.firebaseio.com"
+      user="{{userAuth}}"
+      provider="github"
+      params='{"scope":"repo"}'
+      on-error="_onAuthError"
+      on-status-known-changed="_onStatusKnownChanged">
+    </firebase-auth>
+    <paper-button raised on-tap="_attemptLogin">Login</paper-button>
+  </template>
+  <script>
+    Polymer({
+      is: 'login-screen',
+
+      properties: {
+        userAuth: {
+          type: Object,
+          notify: true
+        }
+      },
+
+      _attemptLogin: function() {
+        this.$.auth.login();
+      },
+
+      _onAuthError: function(error) {
+        console.error(error);
+      },
+
+      _onStatusKnownChanged: function() {}
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,202 @@
+<link rel="import" href="repo-status/release-candidate.html">
+<dom-module id="repo-status">
+  <template>
+    <style>
+      :host {
+				display: block;
+				position: relative;
+				box-sizing: border-box;
+				background-color: #fff;
+				padding: 0.75em;
+				margin: 1em;
+				border-radius: 2px;
+				overflow: hidden;
+				@apply(--shadow-elevation-2dp);
+        transition: background-color 0.3s;
+			}
+
+      h1 {
+        font-weight: normal;
+        font-size: 1.75em;
+        margin-top: 0;
+      }
+
+      h2 {
+        font-weight: normal;
+        font-size: 0.85em;
+        margin-bottom: 0.25em;
+        margin-top: 0;
+        color: #777;
+      }
+
+      :host([status="pass"]) {
+        background-color: var(--paper-green-100);
+      }
+
+      :host([status="fail"]) {
+        background-color: var(--paper-red-100);
+      }
+
+      :host([status="unknown"]) {
+        background-color: var(--paper-orange-100);
+      }
+
+      paper-button {
+        margin: 0.5em 0 -0.5em -0.5em;
+      }
+
+      paper-button > span {
+        vertical-align: middle;
+      }
+    </style>
+    <github-api-document
+      id="githubReleasesDocument"
+      auth-token="[[userAuth.github.accessToken]]"
+			location="[[_computeRepoReleasesLocation(repo)]]"
+      api-headers="{{githubApiHeaders}}"
+			data="{{releases}}">
+		</github-api-document>
+    <iron-ajax
+      id="releaseAjax"
+      url="https://api.github.com/repos/polymerelements/[[repo]]/releases"
+      method="POST"
+      content-type="application/json"
+      headers="[[githubApiHeaders]]"
+      on-last-response-changed="_refresh">
+    </iron-ajax>
+    <h2>Release candidates</h2>
+    <h1>[[repo]]</h1>
+    <template is="dom-repeat" items="[[releaseCandidates]]" as="releaseCandidate">
+      <release-candidate
+        user-auth="[[userAuth]]"
+        repo="[[repo]]"
+        release="[[releaseCandidate]]"
+        on-statuses-changed="_onStatusesChanged">
+      </release-candidate>
+    </template>
+    <paper-button on-tap="_tryRelease">
+      <span>Release</span>
+    </paper-button>
+  </template>
+  <script>
+    var isRcRe = /^(v?\d+\.\d+\.\d+)-rc\d*$/;
+
+    Polymer({
+      is: 'repo-status',
+
+      properties: {
+				userAuth: {
+          type: Object,
+          notify: true
+        },
+
+        repo: {
+          type: String
+        },
+
+				releases: {
+					type: Array,
+					notify: true
+				},
+
+        releaseCandidates: {
+          type: Array,
+          computed: '_computeReleaseCandidates(releases)',
+          notify: true,
+          observer: '_releaseCandidatesChanged'
+        },
+
+        status: {
+          type: String,
+          reflectToAttribute: true
+        }
+      },
+
+      hostAttributes: {
+        hidden: true
+      },
+
+      _computeRepoReleasesLocation: function(repo) {
+        return '/repos/PolymerElements/' + repo + '/releases';
+      },
+
+      _computeReleaseCandidates: function(releases) {
+        var foundFullRelease = false;
+
+        releases = releases || [];
+
+        return releases.filter(function(release) {
+          var isRc = this._isRc(release);
+
+          if (!isRc) {
+            foundFullRelease = true;
+          }
+
+          return isRc && !foundFullRelease;
+        }, this);
+      },
+
+      _isRc: function(release) {
+        return isRcRe.test(release.tag_name);
+      },
+
+      _releaseCandidatesChanged: function(releaseCandidates) {
+        if (releaseCandidates && releaseCandidates.length) {
+          this.removeAttribute('hidden');
+        } else {
+          this.setAttribute('hidden', '');
+        }
+      },
+
+      _onStatusesChanged: function(event) {
+        var candidate = event.target;
+        var statuses = event.detail.value;
+
+        if (!candidate || (candidate !== Polymer.dom(this.root).querySelectorAll('release-candidate')[0])) {
+          return;
+        }
+
+        if (!statuses || !statuses.length || statuses[0].state === 'pending') {
+          this.status = 'unknown';
+        } else if (statuses[0].state === 'success') {
+          this.status = 'pass';
+        } else {
+          this.status = 'fail';
+        }
+      },
+
+      _tryRelease: function() {
+        var candidate;
+
+        if (!this.releaseCandidates || !this.releaseCandidates.length) {
+          return;
+        }
+
+        candidate = this.releaseCandidates[0];
+        this._release(candidate);
+      },
+
+      _release: function(candidate) {
+        var tagName = candidate.tag_name;
+        var releaseMatch = tagName.match(isRcRe);
+        var releaseName = releaseMatch && releaseMatch[1];
+        var tag = Polymer.dom(this.root).querySelector('release-candidate').tag;
+
+        if (!releaseName || !tag) {
+          return;
+        }
+
+        this.$.releaseAjax.body = {
+          tag_name: releaseName,
+          target_commitish: tag.object.sha,
+          name: releaseName,
+          body: releaseName + ' released, based on approved candidated ' + tagName
+        };
+
+        this.$.releaseAjax.generateRequest().completes.then(function() {
+          this.$.githubReleasesDocument.refresh();
+        }.bind(this));
+      }
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,64 @@
+<link rel="import" href="github-api-document.html">
+<link rel="import" href="polyrelease-element/login-screen.html">
+<link rel="import" href="polyrelease-element/element-releases.html">
+
+<dom-module id="polyrelease-element">
+  <template>
+    <style>
+      :host {
+        display: block;
+        @apply(--layout-fit);
+        background-color: var(--paper-grey-50);
+        @apply(--paper-font-common-base);
+      }
+    </style>
+    <iron-page-url
+      hash="{{path}}">
+    </iron-page-url>
+    <carbon-route
+      route="{{path}}"
+      matches=":page"
+      page="{{page}}">
+    </carbon-route>
+    <iron-pages selected="[[page]]" attr-for-selected="id">
+      <login-screen
+        id="login"
+        user-auth="{{userAuth}}">
+      </login-screen>
+      <element-releases
+        id="release-candidates"
+        user-auth="[[userAuth]]">
+      </element-releases>
+    </iron-pages>
+  </template>
+  <script>
+    Polymer({
+      is: 'polyrelease-element',
+
+      properties: {
+        userAuth: {
+          type: Object,
+          notify: true,
+          observer: '_userAuthChanged',
+          value: null
+        },
+
+        path: {
+          type: String,
+          notify: true
+        }
+      },
+
+      _userAuthChanged: function(userAuth) {
+        this.debounce('user-auth-changed', function() {
+          console.log('User auth updated:', this.userAuth);
+          if (this.userAuth) {
+            this.path = 'release-candidates';
+          } else {
+            this.path = 'login';
+          }
+        }, 100);
+      }
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,108 @@
+<dom-module id="release-candidate">
+  <template>
+    <style>
+      :host {
+        @apply(--layout);
+        @apply(--layout-horizontal);
+      }
+
+      h1 {
+        font-size: 1em;
+        font-weight: normal;
+        vertical-align: middle;
+        margin: 0.5em 0;
+
+        @apply(--layout-flex-auto);
+      }
+
+      span {
+        vertical-align: middle;
+      }
+
+      iron-icon {
+        margin-right: 0.25em;
+      }
+
+      a {
+        @apply(--layout);
+        @apply(--layout-vertical);
+        @apply(--layout-center-center);
+        margin-left: 1em;
+
+        color: var(--paper-teal-500);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+    <github-api-document
+      auth-token="[[userAuth.github.accessToken]]"
+      location="[[_computeStatusesLocation(repo, release)]]"
+      data="{{statuses}}">
+    </github-api-document>
+    <github-api-document
+      auth-token="[[userAuth.github.accessToken]]"
+      location="[[_computeTagLocation(repo, release)]]"
+      data="{{tag}}">
+    </github-api-document>
+    <h1>
+      <iron-icon icon="[[_computeStatusIcon(statuses)]]"></iron-icon>
+      <span>[[release.tag_name]]</span>
+    </h1>
+    <a href="//polygit.org/[[repo]]+polymerelements+[[release.tag_name]]/components/[[repo]]/demo/index.html" target="_blank">Demo</a>
+    <a href="[[statuses.0.target_url]]" target="_blank">Build</a>
+  </template>
+  <script>
+    Polymer({
+      is: 'release-candidate',
+
+      properties: {
+        userAuth: {
+          type: Object,
+          notify: true
+        },
+
+        repo: {
+          type: String
+        },
+
+        release: {
+          type: Object
+        },
+
+        tag: {
+          type: Object,
+          notify: true
+        },
+
+        statuses: {
+          type: Array,
+          notify: true
+        }
+      },
+
+      _computeStatusesLocation: function(repo, release) {
+        return '/repos/polymerelements/' + repo + '/statuses/' + release.tag_name;
+      },
+
+      _computeTagLocation: function(repo, release) {
+        return '/repos/polymerelements/' + repo + '/git/refs/tags/' + release.tag_name;
+      },
+
+      _computeStatusIcon: function(statuses) {
+        if (!statuses || statuses.length === 0 ||
+            statuses[0].state === 'pending') {
+          return 'icons:help-outline';
+        }
+
+        if (statuses[0].state === 'success') {
+          return 'icons:star';
+        }
+
+        return 'icons:report-problem';
+      }
+    });
+  </script>
+</dom-module>

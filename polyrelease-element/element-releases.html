@@ -1,0 +1,42 @@
+<link rel="import" href="../github-api-document.html">
+<link rel="import" href="element-releases/repo-status.html">
+<dom-module id="element-releases">
+  <template>
+    <style>
+      :host {
+        display: block;
+        position: relative;
+        max-width: 480px;
+        margin: auto;
+      }
+    </style>
+    <github-api-document
+      auth-token="[[userAuth.github.accessToken]]"
+      location="/orgs/polymerelements/repos"
+      data="{{repos}}">
+    </github-api-document>
+		<template is="dom-repeat" items="[[repos]]" as="repo">
+			<repo-status
+				user-auth="[[userAuth]]"
+				repo="[[repo.name]]">
+			</repo-status>
+		</template>
+  </template>
+  <script>
+    Polymer({
+      is: 'element-releases',
+
+      properties: {
+        userAuth: {
+          type: Object,
+          notify: true
+        },
+
+        repos: {
+          type: Array,
+          notify: true
+        }
+      }
+    });
+  </script>
+</dom-module>
